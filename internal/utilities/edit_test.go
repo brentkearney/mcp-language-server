@@ -644,7 +644,7 @@ func TestApplyTextEdits(t *testing.T) {
 			cleanup := setupMockFileSystem(t, mfs)
 			defer cleanup()
 
-			err := ApplyTextEdits(tt.uri, tt.edits)
+			err := ApplyTextEdits("", tt.uri, tt.edits)
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("Expected error but got none")
@@ -896,7 +896,7 @@ func TestApplyDocumentChange(t *testing.T) {
 			cleanup := setupMockFileSystem(t, mfs)
 			defer cleanup()
 
-			err := ApplyDocumentChange(tt.change)
+			err := ApplyDocumentChange("", tt.change)
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("Expected error but got none")
@@ -1100,7 +1100,7 @@ func TestApplyWorkspaceEdit(t *testing.T) {
 			cleanup := setupMockFileSystem(t, mfs)
 			defer cleanup()
 
-			err := ApplyWorkspaceEdit(tt.edit)
+			err := ApplyWorkspaceEdit("", tt.edit)
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("Expected error but got none")

@@ -113,7 +113,7 @@ func RenameSymbol(ctx context.Context, client *lsp.Client, filePath string, line
 	}
 
 	// Apply the workspace edit to files:workspaceEdit
-	if err := utilities.ApplyWorkspaceEdit(workspaceEdit); err != nil {
+	if err := utilities.ApplyWorkspaceEdit("", workspaceEdit); err != nil {
 		return "", fmt.Errorf("failed to apply changes: %v", err)
 	}
 

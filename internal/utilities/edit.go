@@ -20,9 +20,17 @@ var (
 	osRename    = os.Rename
 )
 
-// ApplyTextEdits applies a sequence of text edits to a file specified by URI
-func ApplyTextEdits(uri protocol.DocumentUri, edits []protocol.TextEdit) error {
+// ApplyTextEdits applies a sequence of text edits to a file specified by URI.
+// If workspaceDir is non-empty, the file path is validated to be within it.
+func ApplyTextEdits(workspaceDir string, uri protocol.DocumentUri, edits []protocol.TextEdit) error {
 	path := strings.TrimPrefix(string(uri), "file://")
+
+	// Validate path is within workspace
+	if workspaceDir != "" {
+		if _, err := ValidateURI(workspaceDir, string(uri)); err != nil {
+			return fmt.Errorf("path validation failed: %w", err)
+		}
+	}
 
 	// Read the file content
 	content, err := osReadFile(path)
@@ -170,10 +178,16 @@ func ApplyTextEdit(lines []string, edit protocol.TextEdit, lineEnding string) ([
 	return result, nil
 }
 
-// ApplyDocumentChange applies a DocumentChange (create/rename/delete operations)
-func ApplyDocumentChange(change protocol.DocumentChange) error {
+// ApplyDocumentChange applies a DocumentChange (create/rename/delete operations).
+// If workspaceDir is non-empty, all file paths are validated to be within it.
+func ApplyDocumentChange(workspaceDir string, change protocol.DocumentChange) error {
 	if change.CreateFile != nil {
 		path := strings.TrimPrefix(string(change.CreateFile.URI), "file://")
+		if workspaceDir != "" {
+			if _, err := ValidatePath(workspaceDir, path); err != nil {
+				return fmt.Errorf("path validation failed for create: %w", err)
+			}
+		}
 		if change.CreateFile.Options != nil {
 			if change.CreateFile.Options.Overwrite {
 				// Proceed with overwrite
@@ -190,6 +204,11 @@ func ApplyDocumentChange(change protocol.DocumentChange) error {
 
 	if change.DeleteFile != nil {
 		path := strings.TrimPrefix(string(change.DeleteFile.URI), "file://")
+		if workspaceDir != "" {
+			if _, err := ValidatePath(workspaceDir, path); err != nil {
+				return fmt.Errorf("path validation failed for delete: %w", err)
+			}
+		}
 		if change.DeleteFile.Options != nil && change.DeleteFile.Options.Recursive {
 			if err := osRemoveAll(path); err != nil {
 				return fmt.Errorf("failed to delete directory recursively: %w", err)
@@ -204,6 +223,14 @@ func ApplyDocumentChange(change protocol.DocumentChange) error {
 	if change.RenameFile != nil {
 		oldPath := strings.TrimPrefix(string(change.RenameFile.OldURI), "file://")
 		newPath := strings.TrimPrefix(string(change.RenameFile.NewURI), "file://")
+		if workspaceDir != "" {
+			if _, err := ValidatePath(workspaceDir, oldPath); err != nil {
+				return fmt.Errorf("path validation failed for rename source: %w", err)
+			}
+			if _, err := ValidatePath(workspaceDir, newPath); err != nil {
+				return fmt.Errorf("path validation failed for rename target: %w", err)
+			}
+		}
 		if change.RenameFile.Options != nil {
 			if !change.RenameFile.Options.Overwrite {
 				if _, err := osStat(newPath); err == nil {
@@ -225,17 +252,18 @@ func ApplyDocumentChange(change protocol.DocumentChange) error {
 				return fmt.Errorf("invalid edit type: %w", err)
 			}
 		}
-		return ApplyTextEdits(change.TextDocumentEdit.TextDocument.URI, textEdits)
+		return ApplyTextEdits(workspaceDir, change.TextDocumentEdit.TextDocument.URI, textEdits)
 	}
 
 	return nil
 }
 
-// ApplyWorkspaceEdit applies the given WorkspaceEdit to the filesystem
-func ApplyWorkspaceEdit(edit protocol.WorkspaceEdit) error {
+// ApplyWorkspaceEdit applies the given WorkspaceEdit to the filesystem.
+// If workspaceDir is non-empty, all file paths are validated to be within it.
+func ApplyWorkspaceEdit(workspaceDir string, edit protocol.WorkspaceEdit) error {
 	// Handle Changes field
 	for uri, textEdits := range edit.Changes {
-		if err := ApplyTextEdits(uri, textEdits); err != nil {
+		if err := ApplyTextEdits(workspaceDir, uri, textEdits); err != nil {
 			return fmt.Errorf("failed to apply text edits: %w", err)
 		}
 	}
@@ -243,7 +271,7 @@ func ApplyWorkspaceEdit(edit protocol.WorkspaceEdit) error {
 	// Handle DocumentChanges field
 	for _, change := range edit.DocumentChanges {
 		coreLogger.Warn("Document change: %v", spew.Sdump(change))
-		if err := ApplyDocumentChange(change); err != nil {
+		if err := ApplyDocumentChange(workspaceDir, change); err != nil {
 			return fmt.Errorf("failed to apply document change: %w", err)
 		}
 	}

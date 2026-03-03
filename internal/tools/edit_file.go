@@ -78,7 +78,7 @@ func ApplyTextEdits(ctx context.Context, client *lsp.Client, filePath string, ed
 		},
 	}
 
-	if err := utilities.ApplyWorkspaceEdit(edit); err != nil {
+	if err := utilities.ApplyWorkspaceEdit("", edit); err != nil {
 		return "", fmt.Errorf("failed to apply text edits: %v", err)
 	}
 
