@@ -60,25 +60,28 @@ func HandleRegisterCapability(params json.RawMessage) (any, error) {
 	return nil, nil
 }
 
-func HandleApplyEdit(params json.RawMessage) (any, error) {
-	var workspaceEdit protocol.ApplyWorkspaceEditParams
-	if err := json.Unmarshal(params, &workspaceEdit); err != nil {
-		return protocol.ApplyWorkspaceEditResult{Applied: false}, err
-	}
+// MakeHandleApplyEdit returns a handler that validates paths against workspaceDir.
+func MakeHandleApplyEdit(workspaceDir string) ServerRequestHandler {
+	return func(params json.RawMessage) (any, error) {
+		var workspaceEdit protocol.ApplyWorkspaceEditParams
+		if err := json.Unmarshal(params, &workspaceEdit); err != nil {
+			return protocol.ApplyWorkspaceEditResult{Applied: false}, err
+		}
 
-	// Apply the edits
-	err := utilities.ApplyWorkspaceEdit(workspaceEdit.Edit)
-	if err != nil {
-		lspLogger.Error("Error applying workspace edit: %v", err)
+		// Apply the edits with workspace boundary validation
+		err := utilities.ApplyWorkspaceEdit(workspaceDir, workspaceEdit.Edit)
+		if err != nil {
+			lspLogger.Error("Error applying workspace edit: %v", err)
+			return protocol.ApplyWorkspaceEditResult{
+				Applied:       false,
+				FailureReason: workspaceEditFailure(err),
+			}, nil
+		}
+
 		return protocol.ApplyWorkspaceEditResult{
-			Applied:       false,
-			FailureReason: workspaceEditFailure(err),
+			Applied: true,
 		}, nil
 	}
-
-	return protocol.ApplyWorkspaceEditResult{
-		Applied: true,
-	}, nil
 }
 
 func workspaceEditFailure(err error) string {

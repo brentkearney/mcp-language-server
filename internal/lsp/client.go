@@ -201,7 +201,7 @@ func (c *Client) InitializeLSPClient(ctx context.Context, workspaceDir string) (
 	}
 
 	// Register handlers
-	c.RegisterServerRequestHandler("workspace/applyEdit", HandleApplyEdit)
+	c.RegisterServerRequestHandler("workspace/applyEdit", MakeHandleApplyEdit(workspaceDir))
 	c.RegisterServerRequestHandler("workspace/configuration", HandleWorkspaceConfiguration)
 	c.RegisterServerRequestHandler("client/registerCapability", HandleRegisterCapability)
 	c.RegisterNotificationHandler("window/showMessage", HandleServerMessage)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/isaacphi/mcp-language-server/internal/tools"
+	"github.com/isaacphi/mcp-language-server/internal/utilities"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -46,6 +47,12 @@ func (s *mcpServer) registerTools() error {
 		filePath, ok := request.Params.Arguments["filePath"].(string)
 		if !ok {
 			return mcp.NewToolResultError("filePath must be a string"), nil
+		}
+
+		// Validate path is within workspace
+		filePath, err := utilities.ValidatePath(s.config.workspaceDir, filePath)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid path: %v", err)), nil
 		}
 
 		// Extract edits array
@@ -166,6 +173,12 @@ func (s *mcpServer) registerTools() error {
 			return mcp.NewToolResultError("filePath must be a string"), nil
 		}
 
+		// Validate path is within workspace
+		filePath, err := utilities.ValidatePath(s.config.workspaceDir, filePath)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid path: %v", err)), nil
+		}
+
 		contextLines := 5 // default value
 		if contextLinesArg, ok := request.Params.Arguments["contextLines"].(int); ok {
 			contextLines = contextLinesArg
@@ -273,6 +286,12 @@ func (s *mcpServer) registerTools() error {
 			return mcp.NewToolResultError("filePath must be a string"), nil
 		}
 
+		// Validate path is within workspace
+		filePath, err := utilities.ValidatePath(s.config.workspaceDir, filePath)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid path: %v", err)), nil
+		}
+
 		// Handle both float64 and int for line and column due to JSON parsing
 		var line, column int
 		switch v := request.Params.Arguments["line"].(type) {
@@ -327,6 +346,12 @@ func (s *mcpServer) registerTools() error {
 		filePath, ok := request.Params.Arguments["filePath"].(string)
 		if !ok {
 			return mcp.NewToolResultError("filePath must be a string"), nil
+		}
+
+		// Validate path is within workspace
+		filePath, err := utilities.ValidatePath(s.config.workspaceDir, filePath)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid path: %v", err)), nil
 		}
 
 		newName, ok := request.Params.Arguments["newName"].(string)
