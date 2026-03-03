@@ -38,14 +38,17 @@ func openAllTypeScriptFiles(ctx context.Context, client *Client, workspaceDir st
 		if info.IsDir() {
 			// Skip node_modules, .git, and other common directories to avoid processing too many files
 			basename := filepath.Base(path)
-			if basename == "node_modules" || basename == ".git" || strings.HasPrefix(basename, ".") {
+			if basename == "node_modules" || basename == ".git" || basename == "build" ||
+				basename == "dist" || basename == "coverage" || basename == "out" ||
+				strings.HasPrefix(basename, ".") {
 				return filepath.SkipDir
 			}
 			return nil
 		}
 
-		// Check if file is a TypeScript file
-		if strings.HasSuffix(path, ".ts") || strings.HasSuffix(path, ".tsx") {
+		// Check if file is a TypeScript or JavaScript file
+		if strings.HasSuffix(path, ".ts") || strings.HasSuffix(path, ".tsx") ||
+			strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".jsx") {
 			if err := client.OpenFile(ctx, path); err != nil {
 				lspLogger.Warn("Failed to open TypeScript file %s: %v", path, err)
 				return nil // Continue with other files even if one fails
