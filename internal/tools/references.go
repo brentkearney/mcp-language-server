@@ -65,6 +65,8 @@ func FindReferences(ctx context.Context, client *lsp.Client, symbolName string) 
 			nameToFind = nameToFind[idx+1:]
 		}
 		filePath := loc.URI.Path()
+		toolsLogger.Info("references: symbol=%s file=%s origPos=L%d:C%d nameToFind=%s",
+			symbol.GetName(), filePath, loc.Range.Start.Line, loc.Range.Start.Character, nameToFind)
 		if content, err := os.ReadFile(filePath); err == nil {
 			lines := strings.Split(string(content), "\n")
 			lineIdx := int(loc.Range.Start.Line)
@@ -73,7 +75,11 @@ func FindReferences(ctx context.Context, client *lsp.Client, symbolName string) 
 				if col >= 0 {
 					refPos.Character = uint32(col)
 				}
+				toolsLogger.Info("references: line[%d]=%q col=%d adjustedPos=L%d:C%d",
+					lineIdx, lines[lineIdx], strings.Index(lines[lineIdx], nameToFind), refPos.Line, refPos.Character)
 			}
+		} else {
+			toolsLogger.Error("references: failed to read file %s: %v", filePath, err)
 		}
 
 		// Use LSP references request with correct params structure
@@ -85,7 +91,7 @@ func FindReferences(ctx context.Context, client *lsp.Client, symbolName string) 
 				Position: refPos,
 			},
 			Context: protocol.ReferenceContext{
-				IncludeDeclaration: false,
+				IncludeDeclaration: true,
 			},
 		}
 		// File is likely to be opened already, but may not be.
@@ -95,6 +101,7 @@ func FindReferences(ctx context.Context, client *lsp.Client, symbolName string) 
 			continue
 		}
 		refs, err := client.References(ctx, refsParams)
+		toolsLogger.Info("references: got %d refs for %s (err=%v)", len(refs), symbol.GetName(), err)
 		if err != nil {
 			return "", fmt.Errorf("failed to get references: %v", err)
 		}
