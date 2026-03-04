@@ -54,19 +54,40 @@ func FindReferences(ctx context.Context, client *lsp.Client, symbolName string) 
 		// Get the location of the symbol
 		loc := symbol.GetLocation()
 
+		// Adjust position to point at the symbol name, not the keyword.
+		// workspace/symbol returns Range.Start at the beginning of the definition
+		// (e.g. the 'c' in "class Foo"), but textDocument/references needs the
+		// cursor on the symbol name itself (e.g. 'F' in "Foo").
+		refPos := loc.Range.Start
+		nameToFind := symbol.GetName()
+		// For qualified names like "Type.Method" or "Type::Method", search for the last segment
+		if idx := strings.LastIndexAny(nameToFind, ".:"); idx >= 0 {
+			nameToFind = nameToFind[idx+1:]
+		}
+		filePath := loc.URI.Path()
+		if content, err := os.ReadFile(filePath); err == nil {
+			lines := strings.Split(string(content), "\n")
+			lineIdx := int(loc.Range.Start.Line)
+			if lineIdx < len(lines) {
+				col := strings.Index(lines[lineIdx], nameToFind)
+				if col >= 0 {
+					refPos.Character = uint32(col)
+				}
+			}
+		}
+
 		// Use LSP references request with correct params structure
 		refsParams := protocol.ReferenceParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 				TextDocument: protocol.TextDocumentIdentifier{
 					URI: loc.URI,
 				},
-				Position: loc.Range.Start,
+				Position: refPos,
 			},
 			Context: protocol.ReferenceContext{
 				IncludeDeclaration: false,
 			},
 		}
-		// File is likely to be opened already, but may not be.
 		err := client.OpenFile(ctx, loc.URI.Path())
 		if err != nil {
 			toolsLogger.Error("Error opening file: %v", err)
